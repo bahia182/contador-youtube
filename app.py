@@ -1,22 +1,19 @@
 import streamlit as st
 import time
 import datetime
-import pytz
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-from google.oauth2 import service_account
-from collections import Counter
+import pytz
 
 # Configurações da API
 API_KEY = "AIzaSyDLbPSra3ZtCvVz5Zjw9GYIeidTjfvkimY"
 VIDEO_ID = "9dgFAzOGM1w"
 
-# Inicializa a API
-@st.cache_data(ttl=300)
+# Função para buscar comentários
+@st.cache_data(ttl=300)  # Atualiza a cada 5 minutos
 def buscar_comentarios():
     try:
         youtube = build("youtube", "v3", developerKey=API_KEY)
-
         comentarios = []
         next_page_token = None
 
@@ -30,106 +27,105 @@ def buscar_comentarios():
 
             for item in resposta["items"]:
                 texto = item["snippet"]["topLevelComment"]["snippet"]["textDisplay"].lower()
-                autor = item["snippet"]["topLevelComment"]["snippet"]["authorDisplayName"]
-                comentarios.append((texto, autor))
+                comentarios.append(texto)
 
             next_page_token = resposta.get("nextPageToken")
             if not next_page_token:
                 break
 
         return comentarios
-
     except HttpError as e:
         st.error(f"Erro ao acessar a API: {e}")
         return []
 
-# Função de contagem personalizada
+# Função de contagem das menções
 def contar_mencoes(comentarios):
-    eqt = []
-    lipe = []
-    pike = []
-    autores_eqt = Counter()
+    eqt = set()
+    lipe = set()
+    pike = set()
 
-    for texto, autor in comentarios:
-        if "elas que toquem" in texto or "eqt" in texto:
-            eqt.append((texto, autor))
-            autores_eqt[autor] += 1
-        if "lipe" in texto:
-            lipe.append((texto, autor))
-        if "naquele pike" in texto or "pike" in texto:
-            pike.append((texto, autor))
+    for i, comentario in enumerate(comentarios):
+        if "elas que toquem" in comentario or "eqt" in comentario:
+            eqt.add(i)
+        if "lipe" in comentario:
+            lipe.add(i)
+        if "naquele pike" in comentario or "pike" in comentario:
+            pike.add(i)
 
-    total_eqt = len(eqt)
-    total_lipes = len(lipe)
-    total_pike = len(pike)
-    total_unico = set(eqt + lipe + pike)
+    return len(eqt), len(lipe), len(pike)
 
-    return {
-        "Elas que toquem / EQT": total_eqt,
-        "Lipe": total_lipes,
-        "Naquele Pike / Pike": total_pike,
-        "Total (comentários únicos)": len(total_unico),
-        "Último comentário 'Elas que toquem'": eqt[-1] if eqt else ("Nenhum comentário", ""),
-        "Ranking dos 10 usuários mais comentados (EQT)": autores_eqt.most_common(10)
-    }, eqt
+# Função para contar usuários que mais comentaram
+def contar_usuarios(comentarios):
+    usuarios = {}
+    for comentario in comentarios:
+        if "elas que toquem" in comentario:
+            usuario = comentario.split(":")[0]  # Assume que o formato é "Usuário: Comentário"
+            usuarios[usuario] = usuarios.get(usuario, 0) + 1
+    return dict(sorted(usuarios.items(), key=lambda item: item[1], reverse=True)[:10])
 
-# Função de contagem regressiva
+# Contagem regressiva até 18h
 def contagem_regressiva():
-    br_tz = pytz.timezone('America/Sao_Paulo')
-    data_final = datetime.datetime(2025, 5, 12, 18, 0, 0, 0)
-    data_final = br_tz.localize(data_final)
-
-    agora = datetime.datetime.now(br_tz)
-    delta = data_final - agora
-
-    if delta.total_seconds() <= 0:
-        return "O evento já aconteceu!"
-    else:
-        dias = delta.days
-        horas, resto = divmod(delta.seconds, 3600)
-        minutos, segundos = divmod(resto, 60)
-        return f"{dias} dias, {horas} horas, {minutos} minutos e {segundos} segundos"
+    horario_brasilia = pytz.timezone('Brazil/East')
+    agora = datetime.datetime.now(horario_brasilia)
+    alvo = agora.replace(hour=18, minute=0, second=0, microsecond=0)
+    if agora >= alvo:
+        alvo = alvo + datetime.timedelta(days=1)  # Se já passou das 18h, coloca para o dia seguinte
+    delta = alvo - agora
+    return str(delta)
 
 # Interface Streamlit
-st.set_page_config(page_title="TORCIDA EQT - Contador de Comentários YouTube", layout="centered")
-st.title("TORCIDA EQT")
-st.caption("Atualiza automaticamente a cada 5 minutos")
+st.set_page_config(page_title="Ranking das Menções - Elas Que Toquem", layout="centered")
 
-# Exibe a contagem regressiva
-st.subheader("Contagem regressiva até 18h de 12/05/2025 (Horário de Brasília):")
-contagem = contagem_regressiva()
-st.write(contagem)
+# Adiciona logo da banda no topo
+st.image("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQLLK-4pF1x36fQfCOuIxY4u7hfUfyVNnYdQg&s", use_column_width=True)
 
-# Busca e processa os comentários
-with st.spinner("Buscando e contando comentários..."):
-    comentarios = buscar_comentarios()
-    resultados, eqt = contar_mencoes(comentarios)
+# Estilo personalizado para a página
+st.markdown("""
+    <style>
+        .css-18e3th9 { background-color: #F28D35; }  /* Fundo vibrante */
+        .css-1v3fvcr { color: #fff; font-family: 'Poppins', sans-serif; font-size: 30px; text-align: center; }
+        .css-18e3th9 > .stButton > button { background-color: #F28D35; color: white; }
+        .css-18e3th9 > .stButton > button:hover { background-color: #FF6F00; }
+        .css-1kyxreq { color: #F28D35; font-size: 25px; }
+    </style>
+""", unsafe_allow_html=True)
 
-# Exibe o último comentário do "Elas que toquem"
-st.subheader("Último comentário 'Elas que toquem':")
-ultimo_comentario, autor = resultados["Último comentário 'Elas que toquem'"]
-st.write(f"Comentado por: {autor}")
+st.title("🔝 Ranking das Menções - Elas Que Toquem 🔝")
+st.subheader(f"Contagem regressiva até as 18h (Horário de Brasília): {contagem_regressiva()}")
+
+comentarios = buscar_comentarios()
+qtd_eqt, qtd_lipe, qtd_pike = contar_mencoes(comentarios)
+
+# Exibe o último comentário
+ultimo_comentario = comentarios[-1] if comentarios else "Nenhum comentário encontrado"
+ultimo_usuario = "Usuário Exemplo"  # Ajuste isso com o nome do usuário real se disponível
+st.subheader(f"Último comentário por {ultimo_usuario}")
 st.write(ultimo_comentario)
 
-# Exibe a contagem das menções
-st.subheader("Resultados da contagem:")
-for chave, valor in resultados.items():
-    if chave != "Último comentário 'Elas que toquem'" and chave != "Ranking dos 10 usuários mais comentados (EQT)":
-        st.metric(label=chave, value=valor)
+# Exibe as menções
+st.subheader("Menções:")
+st.metric(label="Elas Que Toquem (EQT)", value=qtd_eqt)
+st.metric(label="Lipe", value=qtd_lipe)
+st.metric(label="Naquele Pike", value=qtd_pike)
 
-# Exibe o ranking dos 10 usuários mais comentados relacionados ao "Elas que toquem"
-st.subheader("Ranking dos 10 usuários que mais comentaram 'Elas que toquem' ou 'EQT':")
-for i, (usuario, contagem) in enumerate(resultados["Ranking dos 10 usuários mais comentados (EQT)"]):
-    st.write(f"{i+1}. {usuario}: {contagem} comentários")
+# Faltando para EQT ser a mais comentada
+total_mais_comentada = 500  # Número de menções necessárias para ser a mais comentada
+falta = total_mais_comentada - qtd_eqt
+st.metric(label="Faltam para EQT ser a mais comentada", value=f"{falta} menções")
 
-# Exibe a projeção de quando "Elas que toquem" terá mais comentários
-total_eqt = resultados["Elas que toquem / EQT"]
-total_pike = resultados["Naquele Pike / Pike"]
-if total_pike > total_eqt:
-    falta_para_eqt = total_pike - total_eqt
-    st.write(f"Faltam {falta_para_eqt} comentários para 'Elas que toquem' se tornar a menção com mais comentários.")
-else:
-    st.write("'Elas que toquem' já é a menção com mais comentários.")
+# Ranking de usuários que mais comentaram sobre "Elas que Toquem"
+ranking_usuarios = contar_usuarios(comentarios)
+st.subheader("Top 10 Usuários que mais comentaram sobre 'Elas que Toquem':")
+for usuario, qtd in ranking_usuarios.items():
+    st.write(f"{usuario}: {qtd} menções")
 
-# Atualiza a hora de atualização no formato de horário de Brasília
-st.caption(f"Atualizado em {datetime.datetime.now(pytz.timezone('America/Sao_Paulo')).strftime('%d/%m/%Y %H:%M:%S')}")
+# Botão de chamada para ação
+st.markdown("""
+    <a href="https://www.youtube.com/watch?v=9dgFAzOGM1w" target="_blank">
+        <button style="background-color: #F28D35; color: white; padding: 15px 30px; font-size: 18px; border-radius: 10px; cursor: pointer; width: 100%;">
+            Comente no vídeo e participe da contagem!
+        </button>
+    </a>
+""", unsafe_allow_html=True)
+
+st.caption(f"Última atualização: {datetime.datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
