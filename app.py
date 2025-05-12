@@ -18,7 +18,7 @@ def buscar_comentarios():
         comentarios = []
         next_page_token = None
 
-        while True
+        while True:
             resposta = youtube.commentThreads().list(
                 part=snippet,
                 videoId=VIDEO_ID,
