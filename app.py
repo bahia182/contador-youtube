@@ -1,96 +1,49 @@
 import streamlit as st
 import time
 import datetime
-import pandas as pd
-import altair as alt
-from googleapiclient.discovery import build
-from googleapiclient.errors import HttpError
+import pytz  # Para manipulação do fuso horário de Brasília
 
-# Configurações da API
-API_KEY = "AIzaSyDLbPSra3ZtCvVz5Zjw9GYIeidTjfvkimY"
-VIDEO_ID = "9dgFAzOGM1w"
+# Função para calcular a contagem regressiva até 18h do dia 12/05/2025 (Horário de Brasília)
+def contagem_regressiva():
+    # Fuso horário de Brasília
+    br_tz = pytz.timezone('America/Sao_Paulo')
 
-# Inicializa a API
-@st.cache_data(ttl=300)
-def buscar_comentarios():
-    try:
-        youtube = build("youtube", "v3", developerKey=API_KEY)
+    # Data e hora de destino (18h de 12/05/2025 em horário de Brasília)
+    data_final = datetime.datetime(2025, 5, 12, 18, 0, 0, 0)
+    data_final = br_tz.localize(data_final)  # Certifica-se de que a data está no horário correto
 
-        comentarios = []
-        next_page_token = None
+    # Hora atual em Brasília
+    agora = datetime.datetime.now(br_tz)
 
-        while True:
-            resposta = youtube.commentThreads().list(
-                part="snippet",
-                videoId=VIDEO_ID,
-                maxResults=100,
-                pageToken=next_page_token
-            ).execute()
+    # Calculando a diferença
+    delta = data_final - agora
 
-            for item in resposta["items"]:
-                texto = item["snippet"]["topLevelComment"]["snippet"]["textDisplay"].lower()
-                comentarios.append(texto)
-
-            next_page_token = resposta.get("nextPageToken")
-            if not next_page_token:
-                break
-
-        return comentarios
-
-    except HttpError as e:
-        st.error(f"Erro ao acessar a API: {e}")
-        return []
-
-# Função de contagem personalizada
-def contar_mencoes(comentarios):
-    eqt = set()
-    lipe = set()
-    pike = set()
-
-    for i, comentario in enumerate(comentarios):
-        if "elas que toquem" in comentario or "eqt" in comentario:
-            eqt.add(i)
-        if "lipe" in comentario:
-            lipe.add(i)
-        if "naquele pike" in comentario or "pike" in comentario:
-            pike.add(i)
-
-    total_unico = eqt.union(lipe).union(pike)
-    return {
-        "Elas que toquem / EQT": len(eqt),
-        "Lipe": len(lipe),
-        "Naquele Pike / Pike": len(pike),
-        "Total (comentários únicos)": len(total_unico)
-    }
-
-# Gerar gráfico de barras
-def gerar_grafico(resultados):
-    data = {
-        'Categoria': ['Elas que toquem / EQT', 'Lipe', 'Naquele Pike / Pike', 'Total (comentários únicos)'],
-        'Contagem': [resultados["Elas que toquem / EQT"], resultados["Lipe"], resultados["Naquele Pike / Pike"], resultados["Total (comentários únicos)"]]
-    }
-    df = pd.DataFrame(data)
-    
-    chart = alt.Chart(df).mark_bar().encode(
-        x='Categoria',
-        y='Contagem'
-    )
-    st.altair_chart(chart, use_container_width=True)
+    # Se já passou da data final
+    if delta.total_seconds() <= 0:
+        return "O evento já aconteceu!"
+    else:
+        # Exibe o tempo restante de forma legível
+        dias = delta.days
+        horas, resto = divmod(delta.seconds, 3600)
+        minutos, segundos = divmod(resto, 60)
+        return f"{dias} dias, {horas} horas, {minutos} minutos e {segundos} segundos"
 
 # Interface Streamlit
 st.set_page_config(page_title="Contador de Comentários YouTube", layout="centered")
-st.title("Contador de Comentários no YouTube")
+st.title("TORCIDA EQT")
 st.caption("Atualiza automaticamente a cada 5 minutos")
 
-with st.spinner("Buscando e contando comentários..."):
-    comentarios = buscar_comentarios()
-    resultados = contar_mencoes(comentarios)
+# Exibe a contagem regressiva
+st.subheader("Contagem regressiva até 18h de 12/05/2025 (Horário de Brasília):")
+contagem = contagem_regressiva()
+st.write(contagem)
 
-st.subheader("Resultados")
-for chave, valor in resultados.items():
-    st.metric(label=chave, value=valor)
+# Simula a busca de comentários, você pode adicionar aqui a parte de busca de comentários do YouTube
+# Exemplo fictício
+st.subheader("Exemplo de resultado de contagem:")
+st.metric(label="Comentários 'Elas que toquem' ou 'EQT'", value=1752)
+st.metric(label="Comentários 'Lipe'", value=856)
+st.metric(label="Comentários 'Naquele Pike' ou 'pike'", value=3498)
 
-# Exibir gráfico
-gerar_grafico(resultados)
-
-st.caption(f"Atualizado em {datetime.datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
+# Atualiza a hora de atualização no formato de horário de Brasília
+st.caption(f"Atualizado em {datetime.datetime.now(pytz.timezone('America/Sao_Paulo')).strftime('%d/%m/%Y %H:%M:%S')}")
