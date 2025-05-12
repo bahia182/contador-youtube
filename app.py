@@ -76,19 +76,9 @@ def contagem_regressiva():
 # Interface Streamlit
 st.set_page_config(page_title="Ranking das Menções - Elas Que Toquem", layout="centered")
 st.image("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQLLK-4pF1x36fQfCOuIxY4u7hfUfyVNnYdQg&s", use_column_width=True)
-
-# Estilo personalizado para a página
-st.markdown("""
-    <style>
-        .css-18e3th9 { background-color: #F28D35; }  /* Fundo vibrante */
-        .css-1v3fvcr { color: #fff; font-family: 'Poppins', sans-serif; font-size: 30px; text-align: center; }
-        .css-18e3th9 > .stButton > button { background-color: #F28D35; color: white; }
-        .css-18e3th9 > .stButton > button:hover { background-color: #FF6F00; }
-        .css-1kyxreq { color: #F28D35; font-size: 25px; }
-    </style>
-""", unsafe_allow_html=True)
-
 st.title("🔝 Ranking das Menções - Elas Que Toquem 🔝")
+
+# Exibe a contagem regressiva até 18h
 st.subheader(f"Contagem regressiva até as 18h (Horário de Brasília): {contagem_regressiva()}")
 
 comentarios = buscar_comentarios()
@@ -111,4 +101,12 @@ total_mais_comentada = 500  # Número de menções necessárias para ser a mais 
 falta = total_mais_comentada - qtd_eqt
 st.metric(label="Faltam para EQT ser a mais comentada", value=f"{falta} menções")
 
-# Ranking de usuários que mais comentaram sobre "
+# Ranking de usuários que mais comentaram sobre "Elas que Toquem"
+ranking_usuarios = contar_usuarios(comentarios)
+st.subheader("Top 10 Usuários que mais comentaram sobre 'Elas que Toquem':")
+for usuario, qtd in ranking_usuarios.items():
+    st.write(f"{usuario}: {qtd} menções")
+
+# Exibe a última atualização
+st.caption(f"Última atualização: {datetime.datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
+
