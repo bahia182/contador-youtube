@@ -75,8 +75,6 @@ def contagem_regressiva():
 
 # Interface Streamlit
 st.set_page_config(page_title="Ranking das Menções - Elas Que Toquem", layout="centered")
-
-# Adiciona logo da banda no topo
 st.image("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQLLK-4pF1x36fQfCOuIxY4u7hfUfyVNnYdQg&s", use_column_width=True)
 
 # Estilo personalizado para a página
@@ -113,19 +111,4 @@ total_mais_comentada = 500  # Número de menções necessárias para ser a mais 
 falta = total_mais_comentada - qtd_eqt
 st.metric(label="Faltam para EQT ser a mais comentada", value=f"{falta} menções")
 
-# Ranking de usuários que mais comentaram sobre "Elas que Toquem"
-ranking_usuarios = contar_usuarios(comentarios)
-st.subheader("Top 10 Usuários que mais comentaram sobre 'Elas que Toquem':")
-for usuario, qtd in ranking_usuarios.items():
-    st.write(f"{usuario}: {qtd} menções")
-
-# Botão de chamada para ação
-st.markdown("""
-    <a href="https://www.youtube.com/watch?v=9dgFAzOGM1w" target="_blank">
-        <button style="background-color: #F28D35; color: white; padding: 15px 30px; font-size: 18px; border-radius: 10px; cursor: pointer; width: 100%;">
-            Comente no vídeo e participe da contagem!
-        </button>
-    </a>
-""", unsafe_allow_html=True)
-
-st.caption(f"Última atualização: {datetime.datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
+# Ranking de usuários que mais comentaram sobre "
