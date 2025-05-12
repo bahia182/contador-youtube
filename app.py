@@ -11,7 +11,7 @@ VIDEO_ID = "9dgFAzOGM1w"
 
 # Inicializa a API
 @st.cache_data(ttl=300)
-def buscar_comentarios()
+def buscar_comentarios():
     try
         youtube = build(youtube, v3, developerKey=API_KEY)
 
