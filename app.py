@@ -1,9 +1,10 @@
 import streamlit as st
 import time
 import datetime
+import pandas as pd
+import altair as alt
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-from google.oauth2 import service_account
 
 # Configurações da API
 API_KEY = "AIzaSyDLbPSra3ZtCvVz5Zjw9GYIeidTjfvkimY"
@@ -62,6 +63,20 @@ def contar_mencoes(comentarios):
         "Total (comentários únicos)": len(total_unico)
     }
 
+# Gerar gráfico de barras
+def gerar_grafico(resultados):
+    data = {
+        'Categoria': ['Elas que toquem / EQT', 'Lipe', 'Naquele Pike / Pike', 'Total (comentários únicos)'],
+        'Contagem': [resultados["Elas que toquem / EQT"], resultados["Lipe"], resultados["Naquele Pike / Pike"], resultados["Total (comentários únicos)"]]
+    }
+    df = pd.DataFrame(data)
+    
+    chart = alt.Chart(df).mark_bar().encode(
+        x='Categoria',
+        y='Contagem'
+    )
+    st.altair_chart(chart, use_container_width=True)
+
 # Interface Streamlit
 st.set_page_config(page_title="Contador de Comentários YouTube", layout="centered")
 st.title("Contador de Comentários no YouTube")
@@ -74,5 +89,8 @@ with st.spinner("Buscando e contando comentários..."):
 st.subheader("Resultados")
 for chave, valor in resultados.items():
     st.metric(label=chave, value=valor)
+
+# Exibir gráfico
+gerar_grafico(resultados)
 
 st.caption(f"Atualizado em {datetime.datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
