@@ -9,11 +9,32 @@ from collections import Counter
 # Configurações
 API_KEY = "AIzaSyDLbPSra3ZtCvVz5Zjw9GYIeidTjfvkimY"
 VIDEO_ID = "9dgFAzOGM1w"
-LOGO_URL = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQLLK-4pF1x36fQfCOuIxY4u7hfUfyVNnYdQg&s"
 
 # Layout da página
 st.set_page_config(page_title="TORCIDA EQT", layout="wide")
-st.image(LOGO_URL, use_container_width=True)
+st.markdown("""
+    <style>
+        body {
+            background-color: #1a1a2e;
+            color: white;
+        }
+        .stApp {
+            background: linear-gradient(to bottom right, #1f0036, #3d0066);
+        }
+        .block-container {
+            padding: 2rem;
+        }
+        h1, h2, h3, h4, h5, h6 {
+            color: #ff66c4;
+        }
+        .stMetric > div {
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 10px;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
 st.title("📣 TORCIDA EQT")
 st.caption("Acompanhe em tempo real as menções no vídeo oficial!")
 
@@ -118,4 +139,3 @@ data = datetime.datetime.now(pytz.timezone("America/Sao_Paulo")).strftime('%d/%m
 st.caption(f"📡 Atualizado em {data}")
 st.markdown("---")
 st.markdown("💬 [Clique aqui para ir ao vídeo e comentar!](https://youtu.be/9dgFAzOGM1w)")
-
