@@ -73,17 +73,21 @@ def buscar_comentarios():
         return [], []
 
 # Função de contagem personalizada
+
 def contar_mencoes(comentarios, autores):
     eqt_ids, lipe_ids, pike_ids = set(), set(), set()
     autores_eqt = []
+    ultimo_eqt = None
 
     for i, comentario in enumerate(comentarios):
-        if "elas que toquem" in comentario or "eqt" in comentario:
+        comentario_lower = comentario.lower()
+        if "elas que toquem" in comentario_lower or "eqt" in comentario_lower:
             eqt_ids.add(i)
             autores_eqt.append(autores[i][0])
-        if "lipe" in comentario:
+            ultimo_eqt = autores[i]
+        if "lipe" in comentario_lower:
             lipe_ids.add(i)
-        if "naquele pike" in comentario or "pike" in comentario:
+        if "naquele pike" in comentario_lower or "pike" in comentario_lower:
             pike_ids.add(i)
 
     total_unico = eqt_ids.union(lipe_ids).union(pike_ids)
@@ -95,7 +99,7 @@ def contar_mencoes(comentarios, autores):
         "pike": len(pike_ids),
         "total": len(total_unico),
         "ranking": ranking,
-        "ultimo_eqt": autores[len(autores) - 1] if autores and (len(autores) - 1) in eqt_ids else None,
+        "ultimo_eqt": ultimo_eqt,
         "faltam_para_liderar": max(0, max(len(pike_ids), len(lipe_ids)) - len(eqt_ids))
     }
 
