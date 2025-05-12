@@ -7,7 +7,7 @@ from google.oauth2 import service_account
 
 # Configurações da API
 API_KEY = AIzaSyDLbPSra3ZtCvVz5Zjw9GYIeidTjfvkimY
-VIDEO_ID = 9dgFAzOGM1w
+VIDEO_ID = "9dgFAzOGM1w"
 
 # Inicializa a API
 @st.cache_data(ttl=300)
