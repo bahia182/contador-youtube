@@ -4,17 +4,26 @@ import datetime
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 import pytz
+from collections import Counter
 
-# Configurações da API
+# Configurações
 API_KEY = "AIzaSyDLbPSra3ZtCvVz5Zjw9GYIeidTjfvkimY"
 VIDEO_ID = "9dgFAzOGM1w"
+LOGO_URL = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQLLK-4pF1x36fQfCOuIxY4u7hfUfyVNnYdQg&s"
 
-# Função para buscar comentários
-@st.cache_data(ttl=300)  # Atualiza a cada 5 minutos
+# Layout da página
+st.set_page_config(page_title="TORCIDA EQT", layout="wide")
+st.image(LOGO_URL, use_container_width=True)
+st.title("📣 TORCIDA EQT")
+st.caption("Acompanhe em tempo real as menções no vídeo oficial!")
+
+# Função para buscar comentários do YouTube
+@st.cache_data(ttl=300)
 def buscar_comentarios():
     try:
         youtube = build("youtube", "v3", developerKey=API_KEY)
         comentarios = []
+        autores = []
         next_page_token = None
 
         while True:
@@ -26,87 +35,87 @@ def buscar_comentarios():
             ).execute()
 
             for item in resposta["items"]:
-                texto = item["snippet"]["topLevelComment"]["snippet"]["textDisplay"].lower()
+                snippet = item["snippet"]["topLevelComment"]["snippet"]
+                texto = snippet["textDisplay"].lower()
+                autor = snippet["authorDisplayName"]
                 comentarios.append(texto)
+                autores.append((autor, texto))
 
             next_page_token = resposta.get("nextPageToken")
             if not next_page_token:
                 break
 
-        return comentarios
+        return comentarios, autores
+
     except HttpError as e:
         st.error(f"Erro ao acessar a API: {e}")
-        return []
+        return [], []
 
-# Função de contagem das menções
-def contar_mencoes(comentarios):
-    eqt = set()
-    lipe = set()
-    pike = set()
+# Função de contagem personalizada
+def contar_mencoes(comentarios, autores):
+    eqt_ids, lipe_ids, pike_ids = set(), set(), set()
+    autores_eqt = []
 
     for i, comentario in enumerate(comentarios):
         if "elas que toquem" in comentario or "eqt" in comentario:
-            eqt.add(i)
+            eqt_ids.add(i)
+            autores_eqt.append(autores[i][0])
         if "lipe" in comentario:
-            lipe.add(i)
+            lipe_ids.add(i)
         if "naquele pike" in comentario or "pike" in comentario:
-            pike.add(i)
+            pike_ids.add(i)
 
-    return len(eqt), len(lipe), len(pike)
+    total_unico = eqt_ids.union(lipe_ids).union(pike_ids)
+    ranking = Counter(autores_eqt).most_common(10)
 
-# Função para contar usuários que mais comentaram
-def contar_usuarios(comentarios):
-    usuarios = {}
-    for comentario in comentarios:
-        if "elas que toquem" in comentario:
-            usuario = comentario.split(":")[0]  # Assume que o formato é "Usuário: Comentário"
-            usuarios[usuario] = usuarios.get(usuario, 0) + 1
-    return dict(sorted(usuarios.items(), key=lambda item: item[1], reverse=True)[:10])
+    return {
+        "eqt": len(eqt_ids),
+        "lipe": len(lipe_ids),
+        "pike": len(pike_ids),
+        "total": len(total_unico),
+        "ranking": ranking,
+        "ultimo_eqt": autores[len(autores) - 1] if autores and (len(autores) - 1) in eqt_ids else None,
+        "faltam_para_liderar": max(0, max(len(pike_ids), len(lipe_ids)) - len(eqt_ids))
+    }
 
-# Contagem regressiva até 18h
+# ⏳ Contagem regressiva
 def contagem_regressiva():
-    horario_brasilia = pytz.timezone('Brazil/East')
-    agora = datetime.datetime.now(horario_brasilia)
-    alvo = agora.replace(hour=18, minute=0, second=0, microsecond=0)
-    if agora >= alvo:
-        alvo = alvo + datetime.timedelta(days=1)  # Se já passou das 18h, coloca para o dia seguinte
-    delta = alvo - agora
-    return str(delta)
+    fuso_brasilia = pytz.timezone("America/Sao_Paulo")
+    agora = datetime.datetime.now(fuso_brasilia)
+    alvo = fuso_brasilia.localize(datetime.datetime(2025, 5, 12, 18, 0, 0))
+    restante = alvo - agora
+    return restante
 
-# Interface Streamlit
-st.set_page_config(page_title="Ranking das Menções - Elas Que Toquem", layout="centered")
-st.image("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQLLK-4pF1x36fQfCOuIxY4u7hfUfyVNnYdQg&s", use_column_width=True)
-st.title("🔝 Ranking das Menções - Elas Que Toquem 🔝")
+# Interface
+with st.spinner("Buscando comentários..."):
+    comentarios, autores = buscar_comentarios()
+    resultado = contar_mencoes(comentarios, autores)
 
-# Exibe a contagem regressiva até 18h
-st.subheader(f"Contagem regressiva até as 18h (Horário de Brasília): {contagem_regressiva()}")
+# Último comentário relevante
+if resultado["ultimo_eqt"]:
+    st.subheader("📌 Último comentário sobre 'Elas que toquem'")
+    st.markdown(f"**{resultado['ultimo_eqt'][0]}**: _{resultado['ultimo_eqt'][1]}_")
 
-comentarios = buscar_comentarios()
-qtd_eqt, qtd_lipe, qtd_pike = contar_mencoes(comentarios)
+# Contagem principal
+st.subheader("📊 Contagem de Menções")
+col1, col2, col3, col4 = st.columns(4)
+col1.metric("Elas que toquem (EQT)", resultado["eqt"], f"-{resultado['faltam_para_liderar']} para liderar")
+col2.metric("Lipe", resultado["lipe"])
+col3.metric("Naquele Pike", resultado["pike"])
+col4.metric("Total únicos", resultado["total"])
 
-# Exibe o último comentário
-ultimo_comentario = comentarios[-1] if comentarios else "Nenhum comentário encontrado"
-ultimo_usuario = "Usuário Exemplo"  # Ajuste isso com o nome do usuário real se disponível
-st.subheader(f"Último comentário por {ultimo_usuario}")
-st.write(ultimo_comentario)
+# ⏱️ Contagem regressiva
+tempo = contagem_regressiva()
+st.markdown(f"🕒 **Faltam** `{str(tempo).split('.')[0]}` **para 18h de 12/05/2025 (horário de Brasília)**")
 
-# Exibe as menções
-st.subheader("Menções:")
-st.metric(label="Elas Que Toquem (EQT)", value=qtd_eqt)
-st.metric(label="Lipe", value=qtd_lipe)
-st.metric(label="Naquele Pike", value=qtd_pike)
+# 🏆 Ranking dos fãs da EQT
+st.subheader("🔥 TOP 10 - Quem mais comenta 'Elas que toquem'")
+for i, (autor, contagem) in enumerate(resultado["ranking"], start=1):
+    st.markdown(f"{i}. **{autor}** – {contagem} menções")
 
-# Faltando para EQT ser a mais comentada
-total_mais_comentada = 500  # Número de menções necessárias para ser a mais comentada
-falta = total_mais_comentada - qtd_eqt
-st.metric(label="Faltam para EQT ser a mais comentada", value=f"{falta} menções")
-
-# Ranking de usuários que mais comentaram sobre "Elas que Toquem"
-ranking_usuarios = contar_usuarios(comentarios)
-st.subheader("Top 10 Usuários que mais comentaram sobre 'Elas que Toquem':")
-for usuario, qtd in ranking_usuarios.items():
-    st.write(f"{usuario}: {qtd} menções")
-
-# Exibe a última atualização
-st.caption(f"Última atualização: {datetime.datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
+# Rodapé
+data = datetime.datetime.now(pytz.timezone("America/Sao_Paulo")).strftime('%d/%m/%Y %H:%M:%S')
+st.caption(f"📡 Atualizado em {data}")
+st.markdown("---")
+st.markdown("💬 [Clique aqui para ir ao vídeo e comentar!](https://youtu.be/9dgFAzOGM1w)")
 
