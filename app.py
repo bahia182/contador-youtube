@@ -57,10 +57,12 @@ def buscar_comentarios():
 
             for item in resposta["items"]:
                 snippet = item["snippet"]["topLevelComment"]["snippet"]
-                texto = snippet["textDisplay"].lower()
+                texto = snippet["textDisplay"]
+                texto_lower = texto.lower()
                 autor = snippet["authorDisplayName"]
-                comentarios.append(texto)
-                autores.append((autor, texto))
+                data = snippet["publishedAt"]
+                comentarios.append(texto_lower)
+                autores.append((autor, texto, data))
 
             next_page_token = resposta.get("nextPageToken")
             if not next_page_token:
@@ -77,18 +79,20 @@ def buscar_comentarios():
 def contar_mencoes(comentarios, autores):
     eqt_ids, lipe_ids, pike_ids = set(), set(), set()
     autores_eqt = []
-    ultimo_eqt = None
+    mencoes_eqt = []
 
     for i, comentario in enumerate(comentarios):
-        comentario_lower = comentario.lower()
-        if "elas que toquem" in comentario_lower or "eqt" in comentario_lower:
+        if "elas que toquem" in comentario or "eqt" in comentario:
             eqt_ids.add(i)
             autores_eqt.append(autores[i][0])
-            ultimo_eqt = autores[i]
-        if "lipe" in comentario_lower:
+            mencoes_eqt.append((autores[i][0], autores[i][1], autores[i][2]))
+        if "lipe" in comentario:
             lipe_ids.add(i)
-        if "naquele pike" in comentario_lower or "pike" in comentario_lower:
+        if "naquele pike" in comentario or "pike" in comentario:
             pike_ids.add(i)
+
+    # Ordena por data para encontrar o mais recente
+    ultimo_eqt = sorted(mencoes_eqt, key=lambda x: x[2], reverse=True)[0] if mencoes_eqt else None
 
     total_unico = eqt_ids.union(lipe_ids).union(pike_ids)
     ranking = Counter(autores_eqt).most_common(10)
@@ -118,8 +122,12 @@ with st.spinner("Buscando comentários..."):
 
 # Último comentário relevante
 if resultado["ultimo_eqt"]:
+    autor, comentario, data = resultado["ultimo_eqt"]
+    publicado = datetime.datetime.fromisoformat(data.replace("Z", "+00:00"))
+    publicado_brasil = publicado.astimezone(pytz.timezone("America/Sao_Paulo"))
+    horario = publicado_brasil.strftime("%d/%m/%Y %H:%M")
     st.subheader("📌 Último comentário sobre 'Elas que toquem'")
-    st.markdown(f"**{resultado['ultimo_eqt'][0]}**: _{resultado['ultimo_eqt'][1]}_")
+    st.markdown(f"**{autor}** às *{horario}*: _{comentario}_")
 
 # Contagem principal
 st.subheader("📊 Contagem de Menções")
@@ -132,6 +140,14 @@ col4.metric("Total únicos", resultado["total"])
 # ⏱️ Contagem regressiva
 tempo = contagem_regressiva()
 st.markdown(f"🕒 **Faltam** `{str(tempo).split('.')[0]}` **para 18h de 12/05/2025 (horário de Brasília)**")
+
+# 🔎 Busca por autor
+st.subheader("🔍 Buscar suas menções")
+nome_busca = st.text_input("Digite seu nome de usuário exatamente como aparece nos comentários:")
+if nome_busca:
+    contagem_pessoal = sum(1 for autor, *_ in resultado["ranking"] if autor.lower() == nome_busca.lower())
+    total_geral = sum(1 for a in autores if a[0].lower() == nome_busca.lower())
+    st.success(f"{nome_busca} comentou {total_geral} vez(es) com menções à EQT.")
 
 # 🏆 Ranking dos fãs da EQT
 st.subheader("🔥 TOP 10 - Quem mais comenta 'Elas que toquem'")
