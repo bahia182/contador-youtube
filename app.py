@@ -7,6 +7,7 @@ import pytz
 from collections import Counter
 import pandas as pd
 import io
+import matplotlib.pyplot as plt
 
 # Configurações
 API_KEY = "AIzaSyCbP1ImYpiuWrw0LaRq4K9_L9csu5rRZGs"
@@ -86,6 +87,7 @@ def contar_mencoes_por_hora(comentarios, autores, timestamps):
     try:
         # Converte os timestamps para o formato datetime
         timestamps = pd.to_datetime(timestamps, errors='coerce')
+        timestamps = timestamps.dropna()  # Remove timestamps inválidos (coerção)
         horas = timestamps.dt.hour.unique()  # Extrai as horas únicas
 
         contagens_por_hora = {}
@@ -176,31 +178,10 @@ quantidade = sum(1 for a, c, _ in autores if a == nome_busca and ("elas que toqu
 st.markdown(f"**{nome_busca}** comentou 'Elas que toquem' **{quantidade}** vezes.")
 
 # 🕒 Gráfico de Evolução por Hora
-import matplotlib.pyplot as plt
-
 st.subheader("📊 Evolução Horária das Menções")
 
 # Organize the counts for each variable over time
 horas_sorted = sorted(horas)
 contagens_eqt, contagens_lipe, contagens_pike = [], [], []
 for hora in horas_sorted:
-    contagens_eqt.append(sum(1 for i in range(len(comentarios)) if "elas que toquem" in comentarios[i].lower() and pd.to_datetime(timestamps[i]).hour == hora))
-    contagens_lipe.append(sum(1 for i in range(len(comentarios)) if "lipe" in comentarios[i].lower() and pd.to_datetime(timestamps[i]).hour == hora))
-    contagens_pike.append(sum(1 for i in range(len(comentarios)) if "naquele pike" in comentarios[i].lower() and pd.to_datetime(timestamps[i]).hour == hora))
-
-# Plota gráfico comparativo entre as 3 variáveis
-plt.figure(figsize=(10, 6))
-plt.plot(horas_sorted, contagens_eqt, label="EQT", marker='o')
-plt.plot(horas_sorted, contagens_lipe, label="Lipe", marker='o')
-plt.plot(horas_sorted, contagens_pike, label="Naquele Pike", marker='o')
-plt.title("Evolução Horária das Menções")
-plt.xlabel("Hora do Comentário")
-plt.ylabel("Número de Menções")
-plt.legend()
-st.pyplot(plt)
-
-# Rodapé
-data = datetime.datetime.now(pytz.timezone("America/Sao_Paulo")).strftime('%d/%m/%Y %H:%M:%S')
-st.caption(f"📡 Atualizado em {data}")
-st.markdown("---")
-st.markdown("💬 [Clique aqui para ir ao vídeo e comentar!](https://youtu.be/9dgFAzOGM1w)")
+    contagens_eqt.append(sum(1 for i in range
