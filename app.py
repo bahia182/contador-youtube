@@ -9,7 +9,7 @@ import pandas as pd
 import io
 
 # Configurações
-API_KEY = "AIzaSyDLbPSra3ZtCvVz5Zjw9GYIeidTjfvkimY"
+API_KEY = "AIzaSyCbP1ImYpiuWrw0LaRq4K9_L9csu5rRZGs"
 VIDEO_ID = "9dgFAzOGM1w"
 
 # Layout da página
