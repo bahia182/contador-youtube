@@ -7,7 +7,6 @@ import pytz
 from collections import Counter
 import pandas as pd
 import io
-import matplotlib.pyplot as plt
 
 # Configurações
 API_KEY = "AIzaSyCbP1ImYpiuWrw0LaRq4K9_L9csu5rRZGs"
@@ -52,7 +51,6 @@ def buscar_comentarios():
         youtube = build("youtube", "v3", developerKey=API_KEY)
         comentarios = []
         autores = []
-        timestamps = []
         next_page_token = None
 
         while True:
@@ -70,38 +68,19 @@ def buscar_comentarios():
                 data = snippet["publishedAt"]
                 comentarios.append(texto)
                 autores.append((autor, texto, data))
-                timestamps.append(data)
 
             next_page_token = resposta.get("nextPageToken")
             if not next_page_token:
                 break
 
-        return comentarios, autores, timestamps
+        return comentarios, autores
 
     except HttpError as e:
         st.error(f"Erro ao acessar a API: {e}")
-        return [], [], []
-
-# Função para contar menções por hora
-def contar_mencoes_por_hora(comentarios, autores, timestamps):
-    try:
-        # Converte os timestamps para o formato datetime
-        timestamps = pd.to_datetime(timestamps, errors='coerce')
-        timestamps = timestamps.dropna()  # Remove timestamps inválidos (coerção)
-        horas = timestamps.dt.hour.unique()  # Extrai as horas únicas
-
-        contagens_por_hora = {}
-        for hora in horas:
-            contagens_por_hora[hora] = sum(1 for timestamp in timestamps if timestamp.hour == hora)
-
-        # Aqui você retorna as contagens por hora e os timestamps únicos
-        return contagens_por_hora, horas, None
-
-    except Exception as e:
-        st.error(f"Erro ao processar os timestamps: {e}")
-        return {}, [], None  # Caso haja erro, retorna dicionário vazio e lista vazia
+        return [], []
 
 # Função de contagem personalizada
+
 def contar_mencoes(comentarios, autores):
     eqt_ids, lipe_ids, pike_ids = set(), set(), set()
     autores_eqt = []
@@ -141,9 +120,8 @@ def contagem_regressiva():
 
 # Interface
 with st.spinner("Buscando comentários..."):
-    comentarios, autores, timestamps = buscar_comentarios()
+    comentarios, autores = buscar_comentarios()
     resultado = contar_mencoes(comentarios, autores)
-    contagens_por_hora, horas, ultimo_eqt = contar_mencoes_por_hora(comentarios, autores, timestamps)
 
 # Último comentário relevante
 if resultado["ultimo_eqt"]:
@@ -163,7 +141,7 @@ col4.metric("Total únicos", resultado["total"])
 
 # ⏱️ Contagem regressiva
 tempo = contagem_regressiva()
-st.markdown(f"🕒 **Faltam** `{str(tempo).split('.')[0]}` **para 18h de 12/05/2025 (horário de Brasília)**")
+st.markdown(f"🕒 **Faltam** {str(tempo).split('.')[0]} **para 18h de 12/05/2025 (horário de Brasília)**")
 
 # 🏆 Ranking dos fãs da EQT
 st.subheader("🔥 TOP 10 - Quem mais comenta 'Elas que toquem'")
@@ -177,11 +155,8 @@ nome_busca = st.selectbox("Digite seu nome de usuário:", nomes_disponiveis)
 quantidade = sum(1 for a, c, _ in autores if a == nome_busca and ("elas que toquem" in c.lower() or "eqt" in c.lower()))
 st.markdown(f"**{nome_busca}** comentou 'Elas que toquem' **{quantidade}** vezes.")
 
-# 🕒 Gráfico de Evolução por Hora
-st.subheader("📊 Evolução Horária das Menções")
-
-# Organize the counts for each variable over time
-horas_sorted = sorted(horas)
-contagens_eqt, contagens_lipe, contagens_pike = [], [], []
-for hora in horas_sorted:
-    contagens_eqt.append(sum(1 for i in range
+# Rodapé
+data = datetime.datetime.now(pytz.timezone("America/Sao_Paulo")).strftime('%d/%m/%Y %H:%M:%S')
+st.caption(f"📡 Atualizado em {data}")
+st.markdown("---")
+st.markdown("💬 [Clique aqui para ir ao vídeo e comentar!](https://youtu.be/9dgFAzOGM1w)")
