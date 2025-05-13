@@ -4,7 +4,7 @@ import datetime
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 import pytz
-from collections import Counter
+from collections import Counter, defaultdict
 import pandas as pd
 import io
 
@@ -79,35 +79,40 @@ def buscar_comentarios():
         st.error(f"Erro ao acessar a API: {e}")
         return [], []
 
-# Função de contagem personalizada
-
+# Função de contagem personalizada agrupando por hora
 def contar_mencoes(comentarios, autores):
     eqt_ids, lipe_ids, pike_ids = set(), set(), set()
     autores_eqt = []
+    datas_eqt = defaultdict(int)
     ultimo_eqt = None
 
     for i, comentario in enumerate(comentarios):
         comentario_lower = comentario.lower()
+        autor, _, data_iso = autores[i]
+        data_dt = datetime.datetime.fromisoformat(data_iso.replace("Z", "+00:00")).astimezone(pytz.timezone("America/Sao_Paulo"))
+        data_str = data_dt.strftime('%Y-%m-%d %H:00')  # agrupado por hora
+
         if "elas que toquem" in comentario_lower or "eqt" in comentario_lower:
             eqt_ids.add(i)
-            autores_eqt.append(autores[i][0])
+            autores_eqt.append(autor)
+            datas_eqt[data_str] += 1
             ultimo_eqt = autores[i]
         if "lipe" in comentario_lower:
             lipe_ids.add(i)
         if "naquele pike" in comentario_lower or "pike" in comentario_lower:
             pike_ids.add(i)
 
-    total_unico = eqt_ids.union(lipe_ids).union(pike_ids)
     ranking = Counter(autores_eqt).most_common(10)
 
     return {
         "eqt": len(eqt_ids),
         "lipe": len(lipe_ids),
         "pike": len(pike_ids),
-        "total": len(total_unico),
+        "total": len(eqt_ids.union(lipe_ids).union(pike_ids)),
         "ranking": ranking,
         "ultimo_eqt": ultimo_eqt,
-        "faltam_para_liderar": max(0, max(len(pike_ids), len(lipe_ids)) - len(eqt_ids))
+        "faltam_para_liderar": max(0, max(len(pike_ids), len(lipe_ids)) - len(eqt_ids)),
+        "historico_eqt": dict(datas_eqt)
     }
 
 # ⏳ Contagem regressiva
@@ -147,6 +152,14 @@ st.markdown(f"🕒 **Faltam** `{str(tempo).split('.')[0]}` **para 18h de 12/05/2
 st.subheader("🔥 TOP 10 - Quem mais comenta 'Elas que toquem'")
 for i, (autor, contagem) in enumerate(resultado["ranking"], start=1):
     st.markdown(f"{i}. **{autor}** – {contagem} menções")
+
+# 📈 Histórico de crescimento de "EQT" por hora
+st.subheader("📈 Evolução horária das menções 'Elas que toquem'")
+df_historico = pd.DataFrame(list(resultado["historico_eqt"].items()), columns=["Data", "Menções"])
+df_historico["Data"] = pd.to_datetime(df_historico["Data"], format='%Y-%m-%d %H:%M')
+df_historico = df_historico.sort_values("Data")
+
+st.line_chart(df_historico.set_index("Data"))
 
 # 🔍 Busca personalizada com autocomplete
 st.subheader("🔎 Verifique suas menções 'Elas que toquem'")
