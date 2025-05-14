@@ -9,7 +9,7 @@ import pandas as pd
 import io
 
 # Configurações
-API_KEY = "AIzaSyCbP1ImYpiuWrw0LaRq4K9_L9csu5rRZGs"
+API_KEY = "AIzaSyDLbPSra3ZtCvVz5Zjw9GYIeidTjfvkimY"
 VIDEO_ID = "9dgFAzOGM1w"
 
 # Layout da página
@@ -45,13 +45,17 @@ st.title("📣 TORCIDA EQT")
 st.caption("Acompanhe em tempo real as menções no vídeo oficial!")
 
 # Função para buscar comentários do YouTube
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=86400)  # 86400 segundos = 24 horas
 def buscar_comentarios():
     try:
         youtube = build("youtube", "v3", developerKey=API_KEY)
         comentarios = []
         autores = []
         next_page_token = None
+        
+        # Define a data limite para 13/05/2025 às 00:01 (horário de Brasília)
+        limite_data = datetime.datetime(2025, 5, 13, 0, 1, 0)
+        limite_data = pytz.timezone("America/Sao_Paulo").localize(limite_data)
 
         while True:
             resposta = youtube.commentThreads().list(
@@ -65,9 +69,13 @@ def buscar_comentarios():
                 snippet = item["snippet"]["topLevelComment"]["snippet"]
                 texto = snippet["textDisplay"].lower()
                 autor = snippet["authorDisplayName"]
-                data = snippet["publishedAt"]
-                comentarios.append(texto)
-                autores.append((autor, texto, data))
+                data_str = snippet["publishedAt"]
+                data = datetime.datetime.fromisoformat(data_str.replace("Z", "+00:00"))
+
+                # Verifica se o comentário está dentro do limite de data
+                if data <= limite_data:
+                    comentarios.append(texto)
+                    autores.append((autor, texto, data))
 
             next_page_token = resposta.get("nextPageToken")
             if not next_page_token:
@@ -80,7 +88,6 @@ def buscar_comentarios():
         return [], []
 
 # Função de contagem personalizada
-
 def contar_mencoes(comentarios, autores):
     eqt_ids, lipe_ids, pike_ids = set(), set(), set()
     autores_eqt = []
